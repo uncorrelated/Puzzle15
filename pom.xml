@@ -6,15 +6,16 @@
   <groupId>com.uncorrelated.p15</groupId>
   <artifactId>Puzzle15</artifactId>
   <version>1.0</version>
+  <packaging>jar</packaging>
 
   <name>Puzzle15</name>
-  <!-- FIXME change it to the project's website -->
   <url>https://github.com/uncorrelated/Puzzle15</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.release>25</maven.compiler.release>
-  </properties>
+    <maven.compiler.release>8</maven.compiler.release>
+    <exec.mainClass>com.uncorrelated.p15.Puzzle15</exec.mainClass>
+</properties>
 
   <dependencyManagement>
     <dependencies>
@@ -86,5 +87,33 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+	<plugin>
+	    <groupId>org.apache.maven.plugins</groupId>
+	    <artifactId>maven-compiler-plugin</artifactId>
+	    <version>3.15.0</version>
+	    <configuration>
+		<debug>true</debug>
+		<debuglevel>none</debuglevel>
+		<!--<debuglevel>lines,vars,source</debuglevel>-->
+	    </configuration>
+	</plugin>
+	<plugin>
+	    <groupId>org.apache.maven.plugins</groupId>
+	    <artifactId>maven-jar-plugin</artifactId>
+	    <version>3.5.0</version>
+	    <configuration>
+		<archive>
+		    <manifest>
+			<mainClass>com.uncorrelated.p15.Puzzle15</mainClass>
+		    </manifest>
+		    <manifestEntries>
+			<Build-Time>${maven.build.timestamp}</Build-Time>
+			<X-Project-Developer>uncorrelated zombie</X-Project-Developer>
+		    </manifestEntries>
+		</archive>
+	    </configuration>
+	</plugin>
+    </plugins>
   </build>
 </project>

@@ -3,13 +3,30 @@
  * 利用者の責任において、自由に改編・変更を行い、自由な目的に利用することを認めますが、
  * その際にどのような損害が発生したとしても、著作者である uncorrelated は責任を負いません。
  */
-import java.applet.*;
+package com.uncorrelated.p15;
+
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDragEvent;
+import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.DropTargetEvent;
+import java.awt.dnd.DropTargetListener;
 import java.awt.event.*;
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
+import java.awt.image.BufferedImage;
 import java.util.*;
 import java.io.*;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import javax.imageio.ImageIO;
+import javax.sound.sampled.*;
 
 class Cancel {
 	private int left, top, right, bottom;
@@ -53,10 +70,17 @@ class HiScore implements Runnable {
 	private Score[] getScore(String urlString) {
 		try {
 			Vector vctr = new Vector();
-			URL url = new URL(urlString);
-			BufferedReader bis =
-				new BufferedReader(new InputStreamReader(url.openStream()));
+			BufferedReader bis = null;
+			if(urlString.startsWith("http://") || urlString.startsWith("https://")){
+			    URI uri = new URI(urlString);
+			    URL url = uri.toURL();
+			    bis = new BufferedReader(new InputStreamReader(url.openStream()));
+			} else {
+			    bis = new BufferedReader(new InputStreamReader(new FileInputStream(urlString)));
+			}
+				
 			String input;
+			int k = 0;
 			while (null != (input = bis.readLine())) {
 				Score ranking = new Score();
 				int index = 0, findex = 0;
@@ -71,23 +95,71 @@ class HiScore implements Runnable {
 				findex = index + 1;
 				ranking.name = input.substring(findex);
 				vctr.addElement(ranking);
+				if(20 < k++) break;
 			}
 			bis.close();
 			int size = vctr.size();
 			Score[] tmp = new Score[size];
 			for (int c = 0; c < size; c++) {
-				tmp[c] = (Score) vctr.elementAt(c);
+			    // CGIにさせていたソート処理を行う
+			    Score s = (Score) vctr.elementAt(c);
+			    for(int i = 0; i < c; i++) {
+				if(tmp[i].score < s.score || (tmp[i].score == s.score && tmp[i].time > s.time)){
+				    Score t = tmp[i];
+				    tmp[i] = s;
+				    s = t;
+				}
+			    }
+			    tmp[c] = s;
 			}
 			return tmp;
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+	    }
 		return null;
 	}
-
+	
 	private Score[] sendScore(String urlString, Score score, int UpdateKey) {
+		// ローカルファイルへの書き出し処理
+		if(!urlString.startsWith("http://") && !urlString.startsWith("https://")){
+		    try {
+			BufferedWriter bw
+				= new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(urlString))));
+			Score[] tmp = new Score[ranking.length + 1];
+			int j = 0;
+			for(int i = 0; i < ranking.length; i++){
+			    Score os = ranking[i];
+			    if(null != score && (score.score > os.score || (score.score == os.score && score.time < os.time))){
+				tmp[j++] = score;
+				score = null;
+			    }
+			    tmp[j++] = os;
+			}
+			if(j < tmp.length) tmp[j] = score;
+			ranking = tmp;
+			for(int i = 0; i < ranking.length; i++){
+			    StringBuffer sb = new StringBuffer();
+			    sb.append(ranking[i].score);
+			    sb.append(',');
+			    sb.append(ranking[i].time);
+			    sb.append(',');
+			    sb.append(ranking[i].name);
+			    sb.append('\n');
+			    bw.write(sb.toString());
+			}
+			bw.close();
+			return ranking;
+		    } catch (FileNotFoundException e) {
+			e.printStackTrace();
+		    } catch (IOException e) {
+			e.printStackTrace();
+		    }
+		}
+		// CGIに記録させるときの処理
 		StringBuffer sb = new StringBuffer(urlString);
 		sb.append("?score=");
 		sb.append(score.score);
@@ -276,9 +348,9 @@ class Timer {
 }
 
 public class Puzzle15
-	extends Applet
-	implements KeyListener, MouseListener, Runnable {
-	private Image Image = null;
+	extends Frame
+	implements KeyListener, MouseListener, DropTargetListener, Runnable {
+	private BufferedImage Image = null;
 	private int Column, Row;
 	private int NumberOfPanel;
 	private int[][] Matrix = null; // 排他処理が必要
@@ -307,8 +379,8 @@ public class Puzzle15
 	private int NumberOfClick = 0;
 	private int NumberOfShuffle = 64;
 	private Font monospace = new Font("Monospace", Font.BOLD, 12);
-	private AudioClip SoundMove = null;
-	private AudioClip SoundEnd = null;
+	private SoundEffect SoundMove = null;
+	private SoundEffect SoundEnd = null;
 	private int ClickPenalty = 10;
 	private int TimePenalty = 1;
 	private int BaseScore;
@@ -329,7 +401,35 @@ public class Puzzle15
 	// キャンセル・ボタンの位置
 	private Cancel cancel = new Cancel();
 	private int DebugLevel = 0;
+	private int MaximumIconSize = 128;
+	
+	public Puzzle15() {
+	    super("15 puzzle");
+	    setResizable(false);
+	    addWindowListener(new WindowAdapter() {
+		public void windowClosing(WindowEvent e) {
+		    System.exit(0);
+		}
+	    });
+	}
 
+	public Dimension setSize() {
+	    int w = Image.getWidth(this);
+	    int h = Image.getHeight(this);
+	    Insets i = this.getInsets();
+	    Dimension d = new Dimension(w + i.left + i.right, h + i.top + i.bottom);
+//	    setLayout(null);
+	    setPreferredSize(d);
+	    pack();
+	    return d;
+	}
+
+	public void moveCenter(){
+		Rectangle screen = getGraphicsConfiguration().getBounds();
+		setLocation(screen.x + screen.width/2  - Image.getWidth(this)/2,
+				screen.y + screen.height/2 - Image.getHeight(this)/2);
+	}
+	
 	public void init() {
 		try {
 			P15Properties.load(
@@ -337,32 +437,47 @@ public class Puzzle15
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		SoundMove =
-			getAudioClip(getCodeBase(), P15Properties.getProperty("SoundMove"));
-		SoundEnd =
-			getAudioClip(getCodeBase(), P15Properties.getProperty("SoundEnd"));
+
+		try {
+		    SoundMove = new SoundEffect(P15Properties.getProperty("SoundMove"));
+		    SoundEnd = new SoundEffect(P15Properties.getProperty("SoundEnd"));
+		} catch (UnsupportedAudioFileException e) {
+		    e.printStackTrace();
+		} catch (IOException e) {
+		    e.printStackTrace();
+		}
+
 		ClickPenalty =
 			Integer.parseInt(P15Properties.getProperty("ScoreClickPenalty"));
 		TimePenalty =
 			Integer.parseInt(P15Properties.getProperty("ScoreTimePenalty"));
 
 		try {
-			Column = Integer.parseInt(getParameter("Column"));
+			Column = Integer.parseInt(System.getenv("p15.Column"));
 		} catch (Exception e) {
 			Column = Integer.parseInt(P15Properties.getProperty("Column"));
 		}
 		try {
-			Row = Integer.parseInt(getParameter("Row"));
+			Row = Integer.parseInt(System.getenv("p15.Row"));
 		} catch (Exception e) {
 			Row = Integer.parseInt(P15Properties.getProperty("Row"));
 		}
 		try {
-			BaseScore = Integer.parseInt(getParameter("BaseScore"));
+			BaseScore = Integer.parseInt(System.getenv("p15.BaseScore"));
 		} catch (Exception e) {
 			BaseScore = Integer.parseInt(P15Properties.getProperty("ScoreBase"));
 		}
-
-		Image = getImage(getCodeBase(), getParameter("Image"));
+		try {
+			Image = ImageIO.read(new URI(System.getenv("p15.Image")).toURL());
+		} catch (Exception e) {
+		    try {
+			Image = ImageIO.read(Puzzle15.class.getResource(P15Properties.getProperty("Image")));
+		    } catch (IOException eio) {
+			eio.printStackTrace();
+		    }
+		}
+		setImage();
+		
 		Matrix = new int[Row][Column];
 		MovingPanel = new boolean[Row][Column];
 		NumberOfPanel = Row * Column;
@@ -377,13 +492,25 @@ public class Puzzle15
 			1000
 				* Integer.parseInt(
 					P15Properties.getProperty("TimeToChangeHiScore"));
-		String URL = getParameter("HiScoreURL");
+		String URL = System.getenv("HiScoreURL");
+		if(null == URL && null != System.getProperty("user.home"))
+		    URL = System.getProperty("user.home") + File.separator + "p15_high_scores.csv";
+		if(null != URL && !URL.startsWith("http://") && !URL.startsWith("https://")){
+		    File file = new File(URL);
+		    if(!file.exists()){
+			try {
+			    file.createNewFile();
+			} catch (IOException e) {
+			    e.printStackTrace();
+			}
+		    }
+		}
 		UpdateKey = Integer.parseInt(P15Properties.getProperty("UpdateKey"));
 		if (null != URL) {
 			hiscore =
 				new HiScore(
 					URL,
-					getParameter("HiScoreID"),
+					System.getenv("HiScoreID"),
 					TimeToReloadHiScore);
 		}
 		DebugLevel = Integer.parseInt(P15Properties.getProperty("DebugLevel"));
@@ -394,7 +521,7 @@ public class Puzzle15
 		thrd = new Thread(this);
 		thrd.start();
 	}
-
+	
 	private void readyToGame() {
 		int n = 0;
 		for (int y = 0; y < Matrix.length; y++) {
@@ -451,7 +578,7 @@ public class Puzzle15
 	private void initP15(
 		Graphics g,
 		Dimension size) {
-
+	    
 		if (isInit)
 			return;
 
@@ -889,7 +1016,7 @@ public class Puzzle15
 		g.fillRect(0,0,size.width,size.height);
 		g.setColor(Color.yellow);
 		int height = fm.getHeight();
-		String fname = getParameter("Image");
+		String fname = System.getenv("p15.Image");
 		int y = (size.height - 2 * height)/2;
 		if(null==fname){
 			drawLeft(g,size,"The parameter is not set:",y);
@@ -902,7 +1029,9 @@ public class Puzzle15
 	}
 
 	public void paint(Graphics g) {
-		Dimension size = getSize();
+		Dimension size = setSize();
+		Insets i = getInsets();
+		g.translate(i.left, i.top);
 		initP15(g, size);
 		Graphics dg = ShadowBuffer.getGraphics();
 
@@ -960,12 +1089,24 @@ public class Puzzle15
 		return true;
 	}
 
+	private int getX(MouseEvent e){
+	    int x = e.getX();
+	    Insets i = getInsets();
+	    return x - i.left;
+	}
+
+	private int getY(MouseEvent e){
+	    int y = e.getY();
+	    Insets i = getInsets();
+	    return y - i.top;
+	}
+
 	private void movePanel(MouseEvent e) {
 		if(null==Image)
 			return;
 
-		int cx = e.getX() * Column / Image.getWidth(this);
-		int cy = e.getY() * Row / Image.getHeight(this);
+		int cx = getX(e) * Column / Image.getWidth(this);
+		int cy = getY(e) * Row / Image.getHeight(this);
 
 		if (cx < 0 || cy < 0)
 			return;
@@ -1051,7 +1192,7 @@ public class Puzzle15
 				debug();
 				break;
 			case GameIsEnd :
-				if (cancel.isRect(e.getX(), e.getY())) {
+				if (cancel.isRect(getX(e), getY(e))) {
 					if (null == hiscore)
 						readyToGame();
 					else
@@ -1059,11 +1200,11 @@ public class Puzzle15
 				}
 				break;
 			case GameIsRanking :
-				if (cancel.isRect(e.getX(), e.getY()))
+				if (cancel.isRect(getX(e), getY(e)))
 					readyToGame();
 				break;
 			case GameIsHiScore :
-				if (cancel.isRect(e.getX(), e.getY()))
+				if (cancel.isRect(getX(e), getY(e)))
 					readyToGame();
 				break;
 		}
@@ -1080,6 +1221,7 @@ public class Puzzle15
 
 	public void mouseReleased(MouseEvent e) {
 	}
+
 	private void readyToHiScore() {
 		GameStatus = GameIsHiScore;
 		DrawPtr = 0;
@@ -1231,5 +1373,140 @@ public class Puzzle15
 		}
 		if (GameIsRanking == GameStatus)
 			repaint();
+	}
+
+	public BufferedImage rescaleImage(BufferedImage image, int maximum_size) {
+	    int original_height = image.getHeight();
+	    int destination_height = original_height;
+	    int original_width = image.getWidth();
+	    int destination_width = original_width;
+	    boolean IsLarge = false;
+	    if (maximum_size < original_width) {
+		    destination_width = maximum_size;
+		    destination_height = destination_width * original_height
+				    / original_width;
+		    IsLarge = true;
+	    }
+	    if (maximum_size < original_height) {
+		    destination_height = maximum_size;
+		    destination_width = destination_height * original_width
+				    / original_height;
+		    IsLarge = true;
+	    }
+	    if (IsLarge) {
+		    float scaling = ((float) (destination_width + 1))
+				    / ((float) original_width);
+		    HashMap hm = new HashMap();
+		    hm.put(RenderingHints.KEY_INTERPOLATION,
+				    RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		    hm.put(RenderingHints.KEY_DITHERING,
+				    RenderingHints.VALUE_DITHER_ENABLE);
+		    BufferedImage image2 = new BufferedImage(destination_width,
+				    destination_height, image.getType());
+		    AffineTransformOp atfp = new AffineTransformOp(
+				    AffineTransform.getScaleInstance(scaling, scaling),
+				    new RenderingHints(hm));
+		    atfp.filter(image, image2);
+		    image = image2;
+	    }
+	    return image;
+	}
+
+	private void setImage() {
+	    this.isInit = false;
+	    Image icon = rescaleImage(Image, MaximumIconSize);
+	    setIconImage(icon);
+	}
+	
+	private void setImage(File file) {
+	    FileInputStream fis;
+	    try {
+		    fis = new FileInputStream(file);
+		    Image = ImageIO.read(fis);
+		    setImage();
+		    fis.close();
+	    } catch (FileNotFoundException e) {
+		e.printStackTrace();
+	    } catch (IOException e) {
+		e.printStackTrace();
+	    }
+	}
+
+	private void setImage(URL url) throws IOException {
+		Image = ImageIO.read(url);
+		setImage();
+	}
+
+	private DropTarget dropTarget = new DropTarget(this,
+			DnDConstants.ACTION_COPY, this, true);
+
+	public void dragEnter(DropTargetDragEvent arg0) {
+//	    if(GameStatus != GameIsPlaying)
+		arg0.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
+	}
+
+	public void dragExit(DropTargetEvent arg0) {
+	}
+
+	public void dragOver(DropTargetDragEvent arg0) {
+//	    if(GameStatus != GameIsPlaying)
+		if (arg0.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+			arg0.acceptDrag(DnDConstants.ACTION_COPY);
+			return;
+		} else if (arg0.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+			arg0.acceptDrag(DnDConstants.ACTION_COPY);
+			return;
+		}
+	    arg0.rejectDrag();
+	}
+
+	public void drop(DropTargetDropEvent arg0) {
+//    	    if(GameStatus == GameIsPlaying)
+//		    return;
+	    try {
+		    if (arg0.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+			    arg0.acceptDrop(DnDConstants.ACTION_COPY);
+			    Transferable trans = arg0.getTransferable();
+			    java.util.List files = (java.util.List) trans
+					    .getTransferData(DataFlavor.javaFileListFlavor);
+			    Iterator it = files.iterator();
+			    if (it.hasNext()) {
+				    setImage((File) it.next());
+			    }
+		    } else if (arg0.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+			    if (arg0.isLocalTransfer()) {
+
+			    } else {
+				    arg0.acceptDrop(DnDConstants.ACTION_COPY);
+				    Transferable trans = arg0.getTransferable();
+				    String fnames = (String) trans
+						    .getTransferData(DataFlavor.stringFlavor);
+				    StringTokenizer st = new StringTokenizer(fnames, "\n");
+				    if(st.hasMoreTokens()){
+					setImage((new URI(st.nextToken())).toURL());
+				    }
+			    }
+		    }
+		    arg0.dropComplete(true);
+	    } catch (UnsupportedFlavorException ex) {
+		    ex.printStackTrace();
+	    } catch (IOException e) {
+		    e.printStackTrace();
+	    } catch (URISyntaxException ex) {
+		ex.printStackTrace();
+	    } finally {
+		    arg0.dropComplete(false);
+	    }
+	}
+
+	public void dropActionChanged(DropTargetDragEvent arg0) {
+	}
+
+	public static void main(String[] args){
+	    Puzzle15 app = new Puzzle15();
+	    app.init();
+            app.setVisible(true);
+	    app.moveCenter();
+	    app.start();
 	}
 }
