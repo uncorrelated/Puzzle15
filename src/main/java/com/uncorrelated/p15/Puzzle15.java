@@ -451,22 +451,10 @@ public class Puzzle15
 			Integer.parseInt(P15Properties.getProperty("ScoreClickPenalty"));
 		TimePenalty =
 			Integer.parseInt(P15Properties.getProperty("ScoreTimePenalty"));
+		Column = Integer.parseInt(P15Properties.getProperty("Column"));
+		Row = Integer.parseInt(P15Properties.getProperty("Row"));
+		BaseScore = Integer.parseInt(P15Properties.getProperty("ScoreBase"));
 
-		try {
-			Column = Integer.parseInt(System.getenv("p15.Column"));
-		} catch (Exception e) {
-			Column = Integer.parseInt(P15Properties.getProperty("Column"));
-		}
-		try {
-			Row = Integer.parseInt(System.getenv("p15.Row"));
-		} catch (Exception e) {
-			Row = Integer.parseInt(P15Properties.getProperty("Row"));
-		}
-		try {
-			BaseScore = Integer.parseInt(System.getenv("p15.BaseScore"));
-		} catch (Exception e) {
-			BaseScore = Integer.parseInt(P15Properties.getProperty("ScoreBase"));
-		}
 		try {
 			Image = ImageIO.read(new URI(System.getenv("p15.Image")).toURL());
 		} catch (Exception e) {
@@ -492,7 +480,7 @@ public class Puzzle15
 			1000
 				* Integer.parseInt(
 					P15Properties.getProperty("TimeToChangeHiScore"));
-		String URL = System.getenv("HiScoreURL");
+		String URL = P15Properties.getProperty("HiScoreURL");
 		if(null == URL && null != System.getProperty("user.home"))
 		    URL = System.getProperty("user.home") + File.separator + "p15_high_scores.csv";
 		if(null != URL && !URL.startsWith("http://") && !URL.startsWith("https://")){
@@ -510,7 +498,7 @@ public class Puzzle15
 			hiscore =
 				new HiScore(
 					URL,
-					System.getenv("HiScoreID"),
+					P15Properties.getProperty("HiScoreID"),
 					TimeToReloadHiScore);
 		}
 		DebugLevel = Integer.parseInt(P15Properties.getProperty("DebugLevel"));
@@ -1502,8 +1490,24 @@ public class Puzzle15
 	public void dropActionChanged(DropTargetDragEvent arg0) {
 	}
 
+	public void setPropertyByEnv(String pname, String ename){
+	    String env = System.getenv(ename);
+	    if(null != env){
+		P15Properties.setProperty(pname, env);
+	    }
+	}
+
+	public void setPropertiesByEnv() {
+	    String[] pnames = {"Column", "Row", "BaseScore", "HiScoreURL", "HiScoreID"};
+	    for(int i = 0; i < pnames.length; i++){
+		String ename = "p15_" + pnames[i];
+		setPropertyByEnv(pnames[i], ename);
+	    }
+	}
+
 	public static void main(String[] args){
 	    Puzzle15 app = new Puzzle15();
+	    app.setPropertiesByEnv();
 	    app.init();
             app.setVisible(true);
 	    app.moveCenter();
