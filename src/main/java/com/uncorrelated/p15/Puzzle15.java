@@ -1389,25 +1389,39 @@ public class Puzzle15
 			repaint();
 	}
 
-	public BufferedImage rescaleImage(BufferedImage image, int maximum_size) {
+	public BufferedImage rescaleImage(BufferedImage image, int maximum_width, int maximum_height, int minimum) {
 	    int original_height = image.getHeight();
 	    int destination_height = original_height;
 	    int original_width = image.getWidth();
 	    int destination_width = original_width;
-	    boolean IsLarge = false;
-	    if (maximum_size < original_width) {
-		    destination_width = maximum_size;
+	    boolean IsRescale = false;
+	    if (maximum_width < original_width) {
+		    destination_width = maximum_width;
 		    destination_height = destination_width * original_height
 				    / original_width;
-		    IsLarge = true;
+		    IsRescale = true;
 	    }
-	    if (maximum_size < original_height) {
-		    destination_height = maximum_size;
+	    if (maximum_height < original_height) {
+		    destination_height = maximum_height;
 		    destination_width = destination_height * original_width
 				    / original_height;
-		    IsLarge = true;
+		    IsRescale = true;
 	    }
-	    if (IsLarge) {
+	    if (minimum > destination_width) {
+		    original_width = destination_width;
+		    destination_width = minimum;
+		    destination_height = destination_width * original_height
+				    / original_width;
+		    IsRescale = true;
+	    }
+	    if (minimum > destination_height) {
+		    original_height = destination_height;
+		    destination_height = minimum;
+		    destination_width = destination_height * original_width
+				    / original_height;
+		    IsRescale = true;
+	    }
+	    if (IsRescale) {
 		    float scaling = ((float) (destination_width + 1))
 				    / ((float) original_width);
 		    HashMap hm = new HashMap();
@@ -1428,7 +1442,9 @@ public class Puzzle15
 
 	private void setImage() {
 	    this.isInit = false;
-	    Image icon = rescaleImage(Image, MaximumIconSize);
+	    Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
+	    Image = rescaleImage(Image, d.width/4*3, d.height/4*3, 512);
+	    Image icon = rescaleImage(Image, MaximumIconSize, MaximumIconSize, 16);
 	    setIconImage(icon);
 	}
 	
