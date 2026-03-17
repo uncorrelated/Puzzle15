@@ -46,8 +46,6 @@ class Cancel {
 }
 
 class HiScore implements Runnable {
-	private TextField tf;
-	private Button bt, cb;
 	private Score[] ranking = new Score[0];
 	private volatile String URL = null;
 	private String ID;
