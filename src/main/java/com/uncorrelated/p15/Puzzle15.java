@@ -268,20 +268,27 @@ class Score {
 class Timer {
 	private boolean flag = false;
 	private int height = -1, width = -1;
-	private Font monospace = new Font("Monospace", Font.BOLD, 12);
+	private Font font = new Font("Monospace", Font.BOLD, 12);
 	private long start, stop;
 	private Properties prop;
 	private Dimension size;
-
+		
 	public Timer(Properties prop, Dimension dim) {
 		this.prop = prop;
 		setSize(dim);
+		try {
+		    font = new Font(prop.getProperty("FontFamily"),
+			Font.BOLD,
+			Integer.parseInt(prop.getProperty("FontSize")));
+		} catch (Exception e) {
+		    e.printStackTrace();
+		}
 	}
 
 	public void setSize(Dimension dim) {
 		size = dim;
 	}
-
+	
 	private void addNumber(StringBuffer sb, long Number, int MaxNumber) {
 		for (int c = MaxNumber; c > 0; c /= 10) {
 			if (Number <= c)
@@ -292,7 +299,7 @@ class Timer {
 
 	public void draw(Graphics g) {
 		g.setColor(Color.white);
-		g.setFont(monospace);
+		g.setFont(font);
 
 		StringBuffer sb = new StringBuffer(prop.getProperty("StringTime"));
 		sb.append(":");
@@ -302,7 +309,7 @@ class Timer {
 		FontMetrics fm = g.getFontMetrics();
 		height = fm.getHeight();
 		width = fm.stringWidth(timerString);
-
+		
 		g.setColor(Color.black);
 		g.drawString(
 			timerString,
@@ -377,7 +384,7 @@ public class Puzzle15
 	private volatile int GameStatus = GameIsReady;
 	private int NumberOfClick = 0;
 	private int NumberOfShuffle = 64;
-	private Font monospace = new Font("Monospace", Font.BOLD, 12);
+	private Font font = new Font("Monospace", Font.BOLD, 12);
 	private SoundEffect SoundMove = null;
 	private SoundEffect SoundEnd = null;
 	private int ClickPenalty = 10;
@@ -443,6 +450,14 @@ public class Puzzle15
 
 		setPropertiesByEnv();
 		setPropertiesByArgs(args);
+
+		try {
+		    font = new Font(P15Properties.getProperty("FontFamily"),
+			Font.BOLD,
+			Integer.parseInt(P15Properties.getProperty("FontSize")));
+		} catch (Exception e) {
+		    e.printStackTrace();
+		}
 
 		try {
 		    SoundMove = new SoundEffect(P15Properties.getProperty("SoundMove"));
@@ -588,7 +603,7 @@ public class Puzzle15
 		int ImageHeight) {
 		g.drawImage(Image, 0, 0, this);
 		String readyString = P15Properties.getProperty("StringStart");
-		g.setFont(monospace);
+		g.setFont(font);
 		FontMetrics fm = g.getFontMetrics();
 		int height = fm.getHeight();
 		int width = fm.stringWidth(readyString);
@@ -673,7 +688,7 @@ public class Puzzle15
 		String ClickString = P15Properties.getProperty("StringClick");
 		String TimeString = P15Properties.getProperty("StringTime");
 		String TotalString = P15Properties.getProperty("StringTotal");
-		g.setFont(monospace);
+		g.setFont(font);
 		FontMetrics fm = g.getFontMetrics();
 		int height = fm.getHeight();
 		int width;
@@ -932,7 +947,7 @@ public class Puzzle15
 
 	private void drawClick(Graphics g, Dimension size) {
 		String ClickString = P15Properties.getProperty("StringClick");
-		g.setFont(monospace);
+		g.setFont(font);
 		FontMetrics fm = g.getFontMetrics();
 		String temp = ClickString + ":" + NumberOfClick;
 		g.setColor(Color.black);
@@ -957,7 +972,7 @@ public class Puzzle15
 		int y = 0;
 		boolean isEntry = false;
 
-		g.setFont(monospace);
+		g.setFont(font);
 		if (MaximumRankingNumber > ranking.length
 			|| ranking[ranking.length - 1].score < calcScore()) {
 			line += 3;
