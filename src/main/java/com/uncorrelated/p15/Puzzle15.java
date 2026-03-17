@@ -403,7 +403,7 @@ public class Puzzle15
 	private int DebugLevel = 0;
 	private int MaximumIconSize = 128;
 	
-	public Puzzle15() {
+	public Puzzle15(String[] args) {
 	    super("15 puzzle");
 	    setResizable(false);
 	    addWindowListener(new WindowAdapter() {
@@ -411,6 +411,10 @@ public class Puzzle15
 		    System.exit(0);
 		}
 	    });
+	    init(args);
+	    moveCenter();
+            setVisible(true);
+	    start();
 	}
 
 	public Dimension setSize() {
@@ -430,13 +434,16 @@ public class Puzzle15
 				screen.y + screen.height/2 - Image.getHeight(this)/2);
 	}
 	
-	public void init() {
+	public void init(String[] args) {
 		try {
 			P15Properties.load(
 				Puzzle15.class.getResourceAsStream("p15.properties"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+		setPropertiesByEnv();
+		setPropertiesByArgs(args);
 
 		try {
 		    SoundMove = new SoundEffect(P15Properties.getProperty("SoundMove"));
@@ -451,24 +458,12 @@ public class Puzzle15
 			Integer.parseInt(P15Properties.getProperty("ScoreClickPenalty"));
 		TimePenalty =
 			Integer.parseInt(P15Properties.getProperty("ScoreTimePenalty"));
+		Column = Integer.parseInt(P15Properties.getProperty("Column"));
+		Row = Integer.parseInt(P15Properties.getProperty("Row"));
+		BaseScore = Integer.parseInt(P15Properties.getProperty("ScoreBase"));
 
 		try {
-			Column = Integer.parseInt(System.getenv("p15.Column"));
-		} catch (Exception e) {
-			Column = Integer.parseInt(P15Properties.getProperty("Column"));
-		}
-		try {
-			Row = Integer.parseInt(System.getenv("p15.Row"));
-		} catch (Exception e) {
-			Row = Integer.parseInt(P15Properties.getProperty("Row"));
-		}
-		try {
-			BaseScore = Integer.parseInt(System.getenv("p15.BaseScore"));
-		} catch (Exception e) {
-			BaseScore = Integer.parseInt(P15Properties.getProperty("ScoreBase"));
-		}
-		try {
-			Image = ImageIO.read(new URI(System.getenv("p15.Image")).toURL());
+			Image = ImageIO.read(new URI(P15Properties.getProperty("p15_Image")).toURL());
 		} catch (Exception e) {
 		    try {
 			Image = ImageIO.read(Puzzle15.class.getResource(P15Properties.getProperty("Image")));
@@ -492,7 +487,7 @@ public class Puzzle15
 			1000
 				* Integer.parseInt(
 					P15Properties.getProperty("TimeToChangeHiScore"));
-		String URL = System.getenv("HiScoreURL");
+		String URL = P15Properties.getProperty("HiScoreURL");
 		if(null == URL && null != System.getProperty("user.home"))
 		    URL = System.getProperty("user.home") + File.separator + "p15_high_scores.csv";
 		if(null != URL && !URL.startsWith("http://") && !URL.startsWith("https://")){
@@ -510,7 +505,7 @@ public class Puzzle15
 			hiscore =
 				new HiScore(
 					URL,
-					System.getenv("HiScoreID"),
+					P15Properties.getProperty("HiScoreID"),
 					TimeToReloadHiScore);
 		}
 		DebugLevel = Integer.parseInt(P15Properties.getProperty("DebugLevel"));
@@ -1502,11 +1497,35 @@ public class Puzzle15
 	public void dropActionChanged(DropTargetDragEvent arg0) {
 	}
 
+	public void setPropertyByEnv(String pname, String ename){
+	    String env = System.getenv(ename);
+	    if(null != env){
+		P15Properties.setProperty(pname, env);
+	    }
+	}
+
+	public void setPropertiesByEnv() {
+	    String[] pnames = {"Column", "Row", "BaseScore", "HiScoreURL", "HiScoreID"};
+	    for(int i = 0; i < pnames.length; i++){
+		String ename = "p15_" + pnames[i];
+		setPropertyByEnv(pnames[i], ename);
+	    }
+	}
+
+	public void setPropertiesByArgs(String[] args){
+	    if (1 <= args.length) {
+		P15Properties.setProperty("p15_Image", "file://" + args[0]);
+	    }
+	    if (2 == args.length) {
+		P15Properties.setProperty("Row", args[1]);
+		P15Properties.setProperty("Column", args[1]);
+	    } else if (3 <= args.length) {
+		P15Properties.setProperty("Row", args[1]);
+		P15Properties.setProperty("Column", args[2]);
+	    }
+	}
+
 	public static void main(String[] args){
-	    Puzzle15 app = new Puzzle15();
-	    app.init();
-            app.setVisible(true);
-	    app.moveCenter();
-	    app.start();
+	    Puzzle15 app = new Puzzle15(args);
 	}
 }
