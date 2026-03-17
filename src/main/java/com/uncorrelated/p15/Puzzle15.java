@@ -6,6 +6,7 @@
 package com.uncorrelated.p15;
 
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
@@ -1351,6 +1352,10 @@ public class Puzzle15
 	}
 
 	public void keyPressed(KeyEvent e) {
+	    if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0 && 
+		e.getKeyCode() == KeyEvent.VK_V) {
+		paste();
+	    }
 	}
 
 	public void keyReleased(KeyEvent e) {
@@ -1500,6 +1505,20 @@ public class Puzzle15
 	}
 
 	public void dropActionChanged(DropTargetDragEvent arg0) {
+	}
+
+	private void paste(){
+	    Toolkit kit = Toolkit.getDefaultToolkit();
+	    Clipboard clip = kit.getSystemClipboard();
+	    try {
+		    Image cimage = (Image)clip.getData(DataFlavor.imageFlavor);
+		    Image = ImageConverter.convert(cimage);
+		    setImage();
+	    } catch (UnsupportedFlavorException e) {
+		    return;
+	    } catch (IOException e) {
+		    return;
+	    }
 	}
 
 	public static void main(String[] args){
