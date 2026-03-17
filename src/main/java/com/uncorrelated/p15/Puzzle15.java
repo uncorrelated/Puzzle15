@@ -1044,6 +1044,7 @@ public class Puzzle15
 				break;
 			case GameIsPlaying :
 				drawPlaying(dg, size, ImageWidth, ImageHeight);
+				dg.translate(-i.left, -i.top);
 				drawClick(dg, size);
 				timer.draw(dg);
 				break;
