@@ -1625,6 +1625,10 @@ public class Puzzle15
 	}
 
 	public static void main(String[] args){
-	    Puzzle15 app = new Puzzle15(args);
+	    EventQueue.invokeLater(new Runnable() {
+		public void run() {
+		    Puzzle15 app = new Puzzle15(args);
+		}
+	    });
 	}
 }
