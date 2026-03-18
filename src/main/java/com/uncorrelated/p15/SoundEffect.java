@@ -57,6 +57,9 @@ public class SoundEffect {
 		&& (bytesRead = pcmStream.read(audioData, offset, audioData.length - offset)) != -1) {
 	    offset += bytesRead;
 	}
+
+	pcmStream.close();
+	sourceStream.close();
     }
 
     public void play() {
