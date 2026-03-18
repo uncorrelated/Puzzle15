@@ -408,7 +408,9 @@ public class Puzzle15
 	private Cancel cancel = new Cancel();
 	private int DebugLevel = 0;
 	private int MaximumIconSize = 128;
-	
+	// 右ポップアップメニュー
+	private PopupMenu popupMenu = new PopupMenu();
+		
 	public Puzzle15(String[] args) {
 	    super("15 puzzle");
 	    setResizable(false);
@@ -523,6 +525,23 @@ public class Puzzle15
 					TimeToReloadHiScore);
 		}
 		DebugLevel = Integer.parseInt(P15Properties.getProperty("DebugLevel"));
+
+	    MenuItem itemExit = new MenuItem(P15Properties.getProperty("Exit"));
+	    itemExit.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    System.exit(0);
+		}
+	    });
+	    MenuItem itemFileChoose = new MenuItem(P15Properties.getProperty("ChooseImageFile"));
+	    itemFileChoose.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    chooseFile();
+		}
+	    });
+	    popupMenu.add(itemFileChoose);
+	    popupMenu.add(itemExit);
+	    popupMenu.setFont(font);
+	    add(popupMenu);
 
 		readyToGame();
 		addMouseListener(this);
@@ -1226,7 +1245,32 @@ public class Puzzle15
 	public void mouseExited(MouseEvent e) {
 	}
 
+	private void chooseFile(){
+	    FileDialog dialog = new FileDialog(this, P15Properties.getProperty("ChooseImageFile"), FileDialog.LOAD);
+	    String[] formats = ImageIO.getReaderFormatNames();
+	    dialog.setFilenameFilter(new FilenameFilter() {
+		public boolean accept(File dir, String name) {
+		    int lastDot = name.lastIndexOf('.');
+		    if (lastDot == -1) return false;
+		    String ext = name.substring(lastDot + 1).toLowerCase();
+		    for(int i = 0; i<formats.length; i++){
+			if(0 == ext.compareToIgnoreCase(formats[i]))
+			    return true;
+		    }
+		    return false;
+		}
+	    });	    
+	    dialog.setVisible(true);
+	    String directory = dialog.getDirectory();
+	    String file = dialog.getFile();
+	    if(null != file && null != directory)
+		setImage(new File(directory, file));
+	}
+	
 	public void mousePressed(MouseEvent e) {
+	    if (e.isPopupTrigger()) {
+		popupMenu.show(e.getComponent(), e.getX(), e.getY());
+	    }
 	}
 
 	public void mouseReleased(MouseEvent e) {
@@ -1452,8 +1496,11 @@ public class Puzzle15
 	    FileInputStream fis;
 	    try {
 		    fis = new FileInputStream(file);
-		    Image = ImageIO.read(fis);
-		    setImage();
+		    BufferedImage newImage = ImageIO.read(fis);
+		    if(null != newImage){
+			Image = newImage;
+			setImage();
+		    }
 		    fis.close();
 	    } catch (FileNotFoundException e) {
 		e.printStackTrace();
@@ -1463,8 +1510,11 @@ public class Puzzle15
 	}
 
 	private void setImage(URL url) throws IOException {
-		Image = ImageIO.read(url);
+	    BufferedImage newImage = ImageIO.read(url);
+	    if(null != newImage){
+		Image = newImage;
 		setImage();
+	    }
 	}
 
 	private DropTarget dropTarget = new DropTarget(this,
