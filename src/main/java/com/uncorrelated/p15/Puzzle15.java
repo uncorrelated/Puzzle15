@@ -433,6 +433,7 @@ public class Puzzle15
 //	    setLayout(null);
 	    setPreferredSize(d);
 	    pack();
+//	    invalidate();
 	    return d;
 	}
 
@@ -1057,7 +1058,7 @@ public class Puzzle15
 	}
 
 	public void paint(Graphics g) {
-		Dimension size = setSize();
+		Dimension size = this.getSize();
 		Insets i = getInsets();
 		g.translate(i.left, i.top);
 		initP15(g, size);
@@ -1490,6 +1491,7 @@ public class Puzzle15
 	    Image = rescaleImage(Image, d.width/4*3, d.height/4*3, 512);
 	    Image icon = rescaleImage(Image, MaximumIconSize, MaximumIconSize, 16);
 	    setIconImage(icon);
+	    setSize();
 	}
 	
 	private void setImage(File file) {
