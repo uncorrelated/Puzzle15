@@ -480,15 +480,14 @@ public class Puzzle15
 		BaseScore = Integer.parseInt(P15Properties.getProperty("ScoreBase"));
 
 		try {
-			Image = ImageIO.read(new URI(P15Properties.getProperty("p15_Image")).toURL());
+		    setImage(new URI(P15Properties.getProperty("p15_Image")).toURL());
 		} catch (Exception e) {
 		    try {
-			Image = ImageIO.read(Puzzle15.class.getResource(P15Properties.getProperty("Image")));
+			setImage(ImageIO.read(Puzzle15.class.getResource(P15Properties.getProperty("Image"))));
 		    } catch (IOException eio) {
 			eio.printStackTrace();
 		    }
 		}
-		setImage();
 		
 		Matrix = new int[Row][Column];
 		MovingPanel = new boolean[Row][Column];
@@ -1485,24 +1484,26 @@ public class Puzzle15
 	    return image;
 	}
 
-	private void setImage() {
+	private void setImage(BufferedImage image) {
 	    this.isInit = false;
 	    Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-	    Image = rescaleImage(Image, d.width/4*3, d.height/4*3, 512);
+	    Image = rescaleImage(image, d.width/4*3, d.height/4*3, 512);
 	    Image icon = rescaleImage(Image, MaximumIconSize, MaximumIconSize, 16);
 	    setIconImage(icon);
 	    setSize();
+	    switch(GameStatus){
+		case GameIsHiScore :
+		case GameIsRanking :
+		    readyToGame();
+		    break;
+	    }
 	}
 	
 	private void setImage(File file) {
 	    FileInputStream fis;
 	    try {
 		    fis = new FileInputStream(file);
-		    BufferedImage newImage = ImageIO.read(fis);
-		    if(null != newImage){
-			Image = newImage;
-			setImage();
-		    }
+		    setImage(ImageIO.read(fis));
 		    fis.close();
 	    } catch (FileNotFoundException e) {
 		e.printStackTrace();
@@ -1512,11 +1513,7 @@ public class Puzzle15
 	}
 
 	private void setImage(URL url) throws IOException {
-	    BufferedImage newImage = ImageIO.read(url);
-	    if(null != newImage){
-		Image = newImage;
-		setImage();
-	    }
+	    setImage(ImageIO.read(url));
 	}
 
 	private DropTarget dropTarget = new DropTarget(this,
@@ -1589,8 +1586,7 @@ public class Puzzle15
 	    Clipboard clip = kit.getSystemClipboard();
 	    try {
 		    Image cimage = (Image)clip.getData(DataFlavor.imageFlavor);
-		    Image = ImageConverter.convert(cimage);
-		    setImage();
+		    setImage(ImageConverter.convert(cimage));
 	    } catch (UnsupportedFlavorException e) {
 		    return;
 	    } catch (IOException e) {
@@ -1615,7 +1611,7 @@ public class Puzzle15
 
 	public void setPropertiesByArgs(String[] args){
 	    if (1 <= args.length) {
-		P15Properties.setProperty("p15_Image", "file://" + args[0]);
+		P15Properties.setProperty("p15_Image", "file://" + args[0].replace(" ", "%20"));
 	    }
 	    if (2 == args.length) {
 		P15Properties.setProperty("Row", args[1]);
