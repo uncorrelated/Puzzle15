@@ -79,6 +79,7 @@ class HiScore implements Runnable {
 			}
 				
 			String input;
+		    try {
 			int k = 0;
 			while (null != (input = bis.readLine())) {
 				Score ranking = new Score();
@@ -96,7 +97,9 @@ class HiScore implements Runnable {
 				vctr.addElement(ranking);
 				if(20 < k++) break;
 			}
+		    } finally {
 			bis.close();
+		    }
 			int size = vctr.size();
 			Score[] tmp = new Score[size];
 			for (int c = 0; c < size; c++) {
@@ -128,6 +131,7 @@ class HiScore implements Runnable {
 		    try {
 			BufferedWriter bw
 				= new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(urlString))));
+		try {
 			Score[] tmp = new Score[ranking.length + 1];
 			int j = 0;
 			for(int i = 0; i < ranking.length; i++){
@@ -150,7 +154,9 @@ class HiScore implements Runnable {
 			    sb.append('\n');
 			    bw.write(sb.toString());
 			}
+		} finally {
 			bw.close();
+		}
 			return ranking;
 		    } catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -1503,8 +1509,11 @@ public class Puzzle15
 	    FileInputStream fis;
 	    try {
 		    fis = new FileInputStream(file);
-		    setImage(ImageIO.read(fis));
-		    fis.close();
+		    try {
+			setImage(ImageIO.read(fis));
+		    } finally {
+			fis.close();
+		    }
 	    } catch (FileNotFoundException e) {
 		e.printStackTrace();
 	    } catch (IOException e) {
