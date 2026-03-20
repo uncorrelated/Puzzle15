@@ -122,7 +122,7 @@ class HiScore implements Runnable {
 		} catch (URISyntaxException e) {
 			e.printStackTrace();
 	    }
-		return null;
+		return new Score[0];
 	}
 	
 	private Score[] sendScore(String urlString, Score score, int UpdateKey) {
